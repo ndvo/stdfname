@@ -1,9 +1,9 @@
-
+base=$1
 # TXT files:
 readtxt(){
   nome=$(head -1 "$1/$2" );
   nome_limpo=$(cleanup $nome);
-  echo ${nome_limpo:0:50}"___"$2
+  echo ${nome_limpo:0:50}"___"$2| sed -e "s/.txt/$(replaceextension $1 $2)/"
 }
 
 
@@ -21,12 +21,12 @@ cleandate(){
 }
 
 cleanup(){
-  echo "$1" | sed -e 's/[ )(\/\$<>!\W:]/_/g' 
+  echo "$1" | sed -re 's/\W+/_/g' 
 }
 
 replaceextension(){
   filetest=$(file -b "$1/$2");
-  regex_txt="^(UTF-8 Unicode text|ASCII text|ISO-8859 text).*"
+  regex_txt="^(UTF-8 Unicode text|ASCII text|ISO-8859 text|Non-ISO extended-ASCII tex).*"
   regex_python="^Python script.*$" 
   regex_c="^C source.*$" 
   regex_cpp="^C\+\+ source.*$" 
@@ -41,6 +41,8 @@ replaceextension(){
   regex_sla="^Scribus Document.*"
   regex_pem="^PEM certificate.*"
   regex_xml="^XML documen.*"
+  regex_java="^Java source.*"
+  regex_tex="^TeX document.*"
 
   if [[ "${filetest}" =~ $regex_txt ]]; then
     extension=".txt";
@@ -70,39 +72,47 @@ replaceextension(){
     extension=".pem";
   elif [[ "${filetest}" =~ $regex_xml ]]; then 
     extension=".xml";
+  elif [[ "${filetest}" =~ $regex_sh ]]; then 
+    extension=".sh";
+  elif [[ "${filetest}" =~ $regex_java ]]; then 
+    extension=".java";
+  elif [[ "${filetest}" =~ $regex_tex ]]; then 
+    extension=".tex";
   else
-    #echo "unknown";
-    echo "$filetest";
+    extension=".txt";
   fi
-  #echo $extension
+  echo $extension
 }
 
-
-for d in *; do 
-  for f in $( ls $d) ; do
+echo "Diretório a partir do qual recuperar nomes de arquivos: "$base
+for d in $(ls $base); do 
+  echo "Analisando diretório $d"
+  for f in $( ls $base$d ) ; do
     extension=${f: -4};
+    newdir=$(echo $extension| sed -re 's/.*\.//')
+    #extract -VVVVVVVVVV "$base$d/$f"
     case $extension in
-      #".pdf")
-      #  readpdf "$d" "$f"
-      #  break
-      #  ;;
-      ".txt")
-        #readtxt $d $f;
-        replaceextension $d $f;
-        #file -b "$d/$f";
+      ".pdf")
+        readpdf "$base$d" "$f"
         break
         ;;
-      #".png")
-      #  readImage $d $f
-      #  break
-      #  ;;
-      #".jpg")
-      #  readImage $d $f
-      #  break
-      #  ;;
+      ".txt")
+        newname=$(readtxt "$base$d" $f);
+        break
+        ;;
+      ".png")
+        newname=$(readImage "$base$d" $f)
+        break
+        ;;
+      ".jpg")
+        newname=$(readImage "$base$d" $f)
+        break
+        ;;
       *)
+        newname=$f
         ;;
     esac
+    echo "mv \"$d/$f\" \"$newdir/$newname\""
 	done
 done
 
